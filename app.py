@@ -7,7 +7,9 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
+import time
 
+t0 = time.time()
 token = 'pk.eyJ1IjoicmVpZmZkIiwiYSI6ImNrOHFjaXlmOTAyaW0zamp6ZzI4NmtmMTQifQ.4EOhJ5NJJpawQnnoBXGCkw'
 with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json') as response:
     counties = json.load(response)
@@ -19,12 +21,16 @@ BS = "https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
 app = dash.Dash(__name__,
                 external_stylesheets=[BS])
 server = app.server
+t1 = time.time()
 
+setup_time = t1 - t0
+print('time to setup {}'.format(setup_time))
 
 # colorsclae = ["#64c988", "#80d482", "#9cdf7c", "#bae976", "#d9f271", "#fafa6e"]
 
 
 ## data cleaning
+t2 = time.time()
 df[df['county'] == 'New York City'] = df[df['county'] == 'New York City'].fillna(36061.0)
 # df[(df['county'] == 'Kansas City') & (df['state'] == 'Missouri')] = df[(df['county'] == 'Kansas City') & (df['state'] == 'Missouri')].replace('Kansas City', 'Jackson')
 # df[(df['county'] == 'Jackson') & (df['state'] == 'Missouri')] = df[(df['county'] == 'Jackson') & (df['state'] == 'Missouri')].replace(0.0, 29095.0)
@@ -37,23 +43,27 @@ df['cases roc 7 days'] = round(((df['cases'] - df['cases 7 days ago'])/df['cases
 df_latest = df[df['date'] == max(df['date'])]
 df_latest = df_latest.dropna()
 df_latest['fips'] = df_latest['fips'].apply(lambda x: str(int(x)).zfill(5))
+t3 = time.time()
+data_clean_time = t3 - t2
+print('time to clean data {}'.format(data_clean_time))
 
 ## Choropleth Map
+t4 = time.time()
 criteria = 'cases roc 7 days'
 bins = [-5, 0, 5, 10, 15, 20, 25, 30]
 fig = go.Figure()
 for i, n in enumerate(bins):
     if i == 0:
         df = df_latest[df_latest[criteria] <= n]
-        print('range 0 - {}'.format(n))
+        # print('range 0 - {}'.format(n))
     elif i == len(bins) - 1:
         df = df_latest[df_latest[criteria] >= n]
-        print('range 10000+')
+        # print('range 10000+')
     else:
         n_last = bins[i-1]
         df = df_latest[(df_latest[criteria] <= n) & (df_latest[criteria] > n_last)]
-        print('range {} - {}'.format(n_last, n))
-    print(list(df['county']))
+    #     print('range {} - {}'.format(n_last, n))
+    # print(list(df['county']))
     df['z'] = n
     fig.add_trace(go.Choroplethmapbox(
         geojson=counties,
@@ -64,6 +74,10 @@ for i, n in enumerate(bins):
         text = df.county,
         colorscale="Viridis"
     ))
+
+t5 = time.time()
+map_config_time = t5 - t4
+print('time to configure map {}'.format(map_config_time))
 
 fig.update_layout(mapbox_style="light", mapbox_accesstoken=token,
                   mapbox_zoom=3, dragmode = 'lasso', mapbox_center = {"lat": 37.0902, "lon": -95.7129})
@@ -103,7 +117,9 @@ def display_selected_data(selectedData):
 
 
 
-
+t6 = time.time()
+total_time = t6 - t0
+print('total time {}'.format(total_time))
 
 
 
